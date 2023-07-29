@@ -1,0 +1,42 @@
+name: MythicLib
+author: Indyuce
+main: io.lumine.mythic.lib.MythicLib
+api-version: 1.13
+version: ${project.version}
+description: ${project.description}
+softdepend: [ WorldGuard,Residence,Factions,MythicMobs,PlaceholderAPI ]
+commands:
+  mythiclib:
+    description: MythicLib主命令。
+    permission: mythiclib.reload
+    aliases: [ml]
+  healthscale:
+    description: 缩放玩家的生命值。已弃用，请使用/ml debug healthscale命令。
+    permission: mythiclib.command.healthscale
+  exploreattributes:
+    description: 探索玩家属性。已弃用，请使用/ml debug attributes命令。
+    permission: mythiclib.explore-attributes
+  mmotempstat:
+    description: 向玩家添加临时属性修改器。已弃用，请使用/ml statmod命令。
+    permission: mythiclib.tempstat
+  superworkbench:
+    aliases: [swb]
+    description: 打开超级5x5工作台。
+    permission: mythiclib.superworkbench
+  megaworkbench:
+    aliases: [mwb]
+    description: 打开巨型6x6工作台。
+    permission: mythiclib.megaworkbench
+permissions:
+  mythiclib.admin:
+    default: op
+  mythiclib.explore-attributes:
+    default: op
+  mythiclib.mythiclib.command.healthscale:
+    default: op
+  mythiclib.tempstat:
+    default: op
+  mythiclib.superworkbench:
+    default: op
+  mythiclib.megaworkbench:
+    default: op

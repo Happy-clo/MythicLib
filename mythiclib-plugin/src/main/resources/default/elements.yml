@@ -1,0 +1,77 @@
+FIRE:
+  name: 火焰
+  icon: BLAZE_POWDER
+  lore-icon: '🔥'
+  color: '&c'
+  regular-attack:
+    mythiclib-skill-id: fire_elemental_attack
+  crit-strike:
+    mythiclib-skill-id: fire_critical_strike
+
+ICE:
+  name: 冰霜
+  icon: SNOWBALL
+  lore-icon: '❄'
+  color: '&b'
+  regular-attack:
+    mythiclib-skill-id: ice_elemental_attack
+  crit-strike:
+    mythiclib-skill-id: ice_critical_strike
+
+EARTH:
+  name: 大地
+  icon: OAK_SAPLING
+  lore-icon: '₪'
+  color: '&2'
+  regular-attack:
+    mythiclib-skill-id: earth_elemental_attack
+  crit-strike:
+    mythiclib-skill-id: earth_critical_strike
+
+WIND:
+  name: 风之
+  icon: FEATHER
+  lore-icon: '🌊'
+  color: '&7'
+  regular-attack:
+    mythiclib-skill-id: wind_elemental_attack
+  crit-strike:
+    mythiclib-skill-id: wind_critical_strike
+
+THUNDER:
+  name: 雷电
+  icon: GUNPOWDER
+  lore-icon: '★'
+  color: '&e'
+  regular-attack:
+    mythiclib-skill-id: thunder_elemental_attack
+  crit-strike:
+    mythiclib-skill-id: thunder_critical_strike
+
+WATER:
+  name: 水之
+  icon: LILY_PAD
+  lore-icon: '🌊'
+  color: '&3'
+  regular-attack:
+    mythiclib-skill-id: water_elemental_attack
+  crit-strike:
+    mythiclib-skill-id: water_critical_strike
+
+DARKNESS:
+  name: 黑暗
+  icon: COAL
+  lore-icon: '☽'
+  color: '&8'
+  regular-attack:
+    mythiclib-skill-id: empty_skill
+  # 不可暴击
+
+LIGHTNESS:
+  name: 光明
+  icon: GLOWSTONE_DUST
+  lore-icon: '☀'
+  color: '&f'
+  regular-attack:
+    mythiclib-skill-id: empty_skill
+  # 不可暴击

@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>MythicLib</artifactId>
+        <groupId>io.lumine</groupId>
+        <version>1.6.2-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>MythicLib-dist</artifactId>
+    <build>
+        <sourceDirectory>src/main/java</sourceDirectory>
+        <plugins>
+
+            <!-- Completely necessary for dev build deployment -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <finalName>MythicLib-${project.version}</finalName>
+                    <outputDirectory>../target/</outputDirectory>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.3.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+
+                            <!-- Removes useless folders -->
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/**</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+
+                            <relocations>
+                                <relocation>
+                                    <pattern>org.apache.commons.math3</pattern>
+                                    <shadedPattern>io.lumine.mythic.lib.math3</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.google.gson</pattern>
+                                    <shadedPattern>io.lumine.mythic.lib.gson</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>com.zaxxer.hikari</pattern>
+                                    <shadedPattern>io.lumine.mythic.lib.sql.hikari</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.bstats</pattern>
+                                    <shadedPattern>io.lumine.mythic.lib.metrics</shadedPattern>
+                                </relocation>
+                                <!-- <relocation>
+                                    <pattern>bsh</pattern>
+                                    <shadedPattern>io.lumine.mythic.lib.bsh</shadedPattern>
+                                    <includes>
+                                        <include>bsh.*</include>
+                                    </includes>
+                                </relocation> -->
+                            </relocations>
+                            <minimizeJar>false</minimizeJar>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.lumine</groupId>
+            <artifactId>mythiclib-plugin</artifactId>
+            <version>1.6.2-SNAPSHOT</version>
+            <scope>compile</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.lumine</groupId>
+            <artifactId>mythiclib-v1_17</artifactId>
+            <version>1.6.2-SNAPSHOT</version>
+            <scope>compile</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.lumine</groupId>
+            <artifactId>mythiclib-v1_18</artifactId>
+            <version>1.6.2-SNAPSHOT</version>
+            <scope>compile</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.lumine</groupId>
+            <artifactId>mythiclib-v1_18_r2</artifactId>
+            <version>1.6.2-SNAPSHOT</version>
+            <scope>compile</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.lumine</groupId>
+            <artifactId>mythiclib-v1_19</artifactId>
+            <version>1.6.2-SNAPSHOT</version>
+            <scope>compile</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.lumine</groupId>
+            <artifactId>mythiclib-v1_19_r2</artifactId>
+            <version>1.6.2-SNAPSHOT</version>
+            <scope>compile</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.lumine</groupId>
+            <artifactId>mythiclib-v1_19_r3</artifactId>
+            <version>1.6.2-SNAPSHOT</version>
+            <scope>compile</scope>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.lumine</groupId>
+            <artifactId>mythiclib-v1_20_r1</artifactId>
+            <version>1.6.2-SNAPSHOT</version>
+            <scope>compile</scope>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>

@@ -1,0 +1,241 @@
+# 请勿修改
+config-version: 5
+
+# 当开启时，将会在控制台输出详细的调试信息。
+debug: false
+
+# MMOInventory和MMOCore使用此选项在代理连接的服务器之间同步玩家数据。当玩家切换服务器时，插件会尝试每秒钟进行X次新数据的获取，默认最大尝试次数为5次。
+#
+# 如果你的SQL连接较弱，建议增加该值，以避免玩家数据丢失。
+max-sync-tries: 5
+
+# 编辑通用插件数字格式化设置。
+# 更改后请重启服务器，以便MMOItems和MMOCore也进行更新。
+number-format:
+  decimal-separator: .
+
+# 定义防御行为的计算方式。该公式应返回给定输入的最终伤害量：
+# - 造成的伤害 #damage#
+# - 当前玩家防御力 #defense#
+#
+# 默认公式来自于《放逐之路》游戏，你可以在他们的维基页面了解更多信息：https://pathofexile.fandom.com/wiki/Armour
+#
+# natural   <-> 非元素伤害
+# elemental <-> 火焰/水/.. 伤害
+defense-application:
+  natural: '#damage# - #defense#'
+  elemental: '#damage# * (1 - (#defense# / (5 * #damage# + #defense#)))'
+
+# 允许缩放健康值到特定数值，以避免额外的健康值充满屏幕。
+# 修改后需要服务器重载。
+# 如果玩家遇到看到太多心形图标的问题，请使用延迟。这种情况可能会出现在使用MySQL Inventory Bridge等插件时。
+# 延迟以游戏刻计算，20个游戏刻 = 1秒。
+health-scale:
+  enabled: false
+  scale: 20
+  delay: 0
+
+critical-strikes:
+  weapon:
+    coefficient: 2 # 默认值 = 2，表示暴击造成初始伤害的200％
+    cooldown: 3
+  skill:
+    coefficient: 1.5 # 默认值 = 1.5，表示技能暴击造成初始伤害的150％
+    cooldown: 3
+
+# 等待技能施放时发生的情况
+# 如果技能延迟（技能参数）设置为0，则不适用。
+casting-delay:
+  slowness: 60 # 施放时的速度减缓百分比
+  cancel-on-move: false # 如果玩家移动是否取消施放
+
+  cast-script: # 倒计时开始时调用的MythicLib脚本
+    enabled: true
+    script:
+      mechanics:
+        play_sound:
+          type: sound
+          sound: BLOCK_END_PORTAL_FRAME_FILL
+          volume: 1
+          pitch: 2
+
+  cancel-script: # 取消倒计时时调用的MythicLib脚本
+    enabled: true
+    # 其他格式:
+    # script: <public_script_name>
+    script:
+      mechanics:
+        play_sound:
+          type: sound
+          sound: ENTITY_VILLAGER_NO
+          volume: 1
+          pitch: 2
+
+  bossbar: # 施放延迟期间显示的bossbar
+    enabled: true
+    format: '施放中'
+
+# 防具属性的默认和最大值。这些系统都有冷却时间，可以通过“***冷却时间缩减”属性减少冷却时间。
+mitigation:
+
+  # 编辑减轻伤害的消息。留空以不显示消息。
+  message:
+
+    # 是否将消息显示在动作条而非聊天窗口
+    action-bar: true
+
+    parry: '&c你刚刚招架了 #damage# 伤害。'
+    block: '&c你刚刚格挡了 #damage# 伤害。' # 使用 #power# 显示格挡强度。
+    dodge: '&c你刚刚躲避了 #damage# 伤害。'
+
+  block:
+    cooldown: 5.0
+
+  dodge:
+    knockback: 1.0
+    cooldown: 5
+
+  parry:
+    knockback: 1.0
+    cooldown: 8.0
+
+# 更改特定伤害来源的伤害量。当需要平衡你的基础伤害来源时，这个工具很有用。
+# 你可以使用任何数学公式来处理任何可能的伤害来源。
+# 可用的伤害来源：https://hub.spigotmc.org/javadocs/spigot/org/bukkit/event/entity/EntityDamageEvent.DamageCause.html
+# 修改后需要服务器重载。
+#
+# 使用 {event_damage} 将返回初始事件伤害。
+vanilla-damage-modifiers:
+  enabled: false
+  source:
+    VOID: '%mythiclib_stat_max_health% * .05' # 造成玩家最大生命值的5%伤害
+    FIRE: '{event_damage} * 2' # 火焰伤害翻倍
+    WITHER: '%mythiclib_stat_max_health% * .05'
+    LAVA: '%mythiclib_stat_max_health% * .2'
+    DROWNING: '%mythiclib_stat_max_health% * .1'
+
+# 显示游戏内的伤害或治疗指示器。
+# 修改后需要服务器重载。
+# 支持的插件:
+# - HolographicDisplays
+# - DecentHolograms
+# - CMI
+# - Holograms
+# - TrHologram
+game-indicators:
+
+  # 当实体受到伤害时
+  # 使用格式: 'ᜌ{icon} &f{value}ᜌ' 配合维基中提供的资源包
+  # 来去除灰色背景
+  damage:
+    enabled: true
+    decimal-format: '0.#'
+    format: '{icon} &f{value}'
+    custom-font:
+      enabled: false
+      normal:
+        '0': 'ᜀ'
+        '1': 'ᜁ'
+        '2': 'ᜂ'
+        '3': 'ᜃ'
+        '4': 'ᜄ'
+        '5': 'ᜅ'
+        '6': 'ᜆ'
+        '7': 'ᜇ'
+        '8': 'ᜈ'
+        '9': 'ᜉ'
+        'dot': 'ᜊ'
+        'inter': 'ᜍ'
+      crit:
+        '0': 'ᜐ'
+        '1': 'ᜑ'
+        '2': 'ᜒ'
+        '3': 'ᜓ'
+        '4': '᜔'
+        '5': '᜕'
+        '6': '᜖'
+        '7': '᜗'
+        '8': '᜘'
+        '9': '᜙'
+        'dot': 'ᜋ'
+        'inter': 'ᜍ'
+    icon:
+      weapon:
+        normal: '&c🗡'
+        crit: '&c&l🗡'
+      skill:
+        normal: '&6★'
+        crit: '&6&l★'
+    split-holograms: true
+    radial-velocity: 1
+    gravity: 1
+    initial-upward-velocity: 1
+    entity-height-percent: 0.75
+    y-offset: 0.1
+
+  # 当实体恢复一些生命值时
+  regen:
+    enabled: false
+    decimal-format: '0.#'
+    format: '&a+#'
+    radial-velocity: 1
+    gravity: 1
+    initial-upward-velocity: 1
+    entity-height-percent: 0.75
+    y-offset: 0.1
+
+# 由于1.1.6版本中与移动速度属性相关的更改，当玩家登录时，他们会看到其移动速度重置为0.1
+#
+# 如果与其他插件的兼容性问题，请将其设置为false。
+fix-movement-speed: true
+
+# 限制每个刻发送到玩家的伤害粒子数量。
+# 默认设置为每刻发送10个粒子。这些粒子可能会非常烦人，如果粒子过多甚至会导致客户端崩溃。
+damage-particles-cap:
+  max-per-tick: 10
+  enabled: false
+
+# 启用此选项后，插件将尝试修复发送给客户端的过大数据包。当配方太多导致客户端无法处理时，可能会发生这种情况。
+# 如果更改此选项的值，则必须重启服务器。
+fix-too-large-packets: false
+
+# 是否允许进行攻击/支援行为的玩家与另一个玩家进行互动。包括技能、MI员工攻击等。
+#
+# 更多信息请参考维基页面
+# https://gitlab.com/phoenix-dvpmt/mmocore/-/wikis/Combat
+interaction_rules:
+
+  # 当启用时，为技能、近战和投射物攻击应用PvP交互规则。
+  # 默认情况下，此选项关闭，以减少新用户的混淆。
+  enabled: true
+
+  # 当禁用时，支援型技能（增益或治疗）只能对玩家使用。
+  support_skills_on_mobs: true
+
+  # 当PvP关闭时
+  pvp_off:
+
+    # 在PvP关闭时是否允许治疗其他玩家
+    support:
+      party_member: true
+      party_other: true
+      guild_ally: true
+      guild_neutral: true
+      guild_enemy: true
+
+  ## 当PvP打开时
+  pvp_on:
+
+    # 在PvP打开时是否允许治疗其他玩家
+    support:
+      party_member: true
+      party_other: false
+      guild_ally: true
+      guild_neutral: true
+      guild_enemy: false
+
+    # 公会/队伍的友方伤害
+    offense:
+      party_member: false
+      guild_ally: false
+      guild_neutral: true
