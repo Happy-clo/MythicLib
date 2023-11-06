@@ -27,7 +27,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- Dependency versions -->
-        <junit.version>5.10.0</junit.version>
+        <junit.version>5.10.1</junit.version>
     </properties>
 
     <build>
