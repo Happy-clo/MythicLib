@@ -1,4 +1,4 @@
-name: Build Origin Version
+name: Build PhoenixDev Version
 
 on:
   push:
