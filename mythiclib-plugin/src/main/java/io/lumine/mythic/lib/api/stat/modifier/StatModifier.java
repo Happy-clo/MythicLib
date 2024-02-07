@@ -6,25 +6,25 @@ import io.lumine.mythic.lib.api.stat.api.InstanceModifier;
 import io.lumine.mythic.lib.player.modifier.ModifierSource;
 import io.lumine.mythic.lib.player.modifier.ModifierType;
 import io.lumine.mythic.lib.util.configobject.ConfigObject;
+import org.jetbrains.annotations.NotNull;
 
-/**
- * Stat modifiers do NOT utilize the player modifier UUID
- */
+import java.util.UUID;
+
 public class StatModifier extends InstanceModifier {
     private final String stat;
 
     /**
      * Flat stat modifier (simplest modifier you can think about)
      */
-    public StatModifier(String key, String stat, double value) {
+    public StatModifier(@NotNull String key, @NotNull String stat, double value) {
         this(key, stat, value, ModifierType.FLAT, EquipmentSlot.OTHER, ModifierSource.OTHER);
     }
 
     /**
-     * Stat modifier given by an external mecanic, like a party buff, item set bonuses,
+     * Stat modifier given by an external feature, like a party buff, item set bonuses,
      * skills or abilities... Anything apart from items and armor.
      */
-    public StatModifier(String key, String stat, double value, ModifierType type) {
+    public StatModifier(@NotNull String key, @NotNull String stat, double value, @NotNull ModifierType type) {
         this(key, stat, value, type, EquipmentSlot.OTHER, ModifierSource.OTHER);
     }
 
@@ -32,14 +32,29 @@ public class StatModifier extends InstanceModifier {
      * Stat modifier given by an item, either a weapon or an armor piece.
      *
      * @param stat   Stat being modified
-     * @param key    Player modifier key
+     * @param key    Non unique modifier key
      * @param value  Value of stat modifier
      * @param type   Is the modifier flat or multiplicative
      * @param slot   Slot of the item granting the stat modifier
      * @param source Type of the item granting the stat modifier
      */
-    public StatModifier(String key, String stat, double value, ModifierType type, EquipmentSlot slot, ModifierSource source) {
-        super(key, slot, source, value, type);
+    public StatModifier(@NotNull String key, @NotNull String stat, double value, @NotNull ModifierType type, @NotNull EquipmentSlot slot, @NotNull ModifierSource source) {
+        this(UUID.randomUUID(), key, stat, value, type, slot, source);
+    }
+
+    /**
+     * Stat modifier given by an item, either a weapon or an armor piece.
+     *
+     * @param uniqueId The modifier unique ID
+     * @param stat     Stat being modified
+     * @param key      Non unique modifier key
+     * @param value    Value of stat modifier
+     * @param type     Is the modifier flat or multiplicative
+     * @param slot     Slot of the item granting the stat modifier
+     * @param source   Type of the item granting the stat modifier
+     */
+    public StatModifier(@NotNull UUID uniqueId, @NotNull String key, @NotNull String stat, double value, @NotNull ModifierType type, @NotNull EquipmentSlot slot, @NotNull ModifierSource source) {
+        super(uniqueId, key, slot, source, value, type);
 
         this.stat = stat;
     }
@@ -63,6 +78,7 @@ public class StatModifier extends InstanceModifier {
         this.stat = object.getString("stat");
     }
 
+    @NotNull
     public String getStat() {
         return stat;
     }
@@ -74,8 +90,9 @@ public class StatModifier extends InstanceModifier {
      * @param offset The offset added.
      * @return A new instance of StatModifier with modified value
      */
+    @NotNull
     public StatModifier add(double offset) {
-        return new StatModifier(getKey(), stat, value + offset, type, getSlot(), getSource());
+        return new StatModifier(getUniqueId(), getKey(), stat, value + offset, type, getSlot(), getSource());
     }
 
     /**
@@ -86,18 +103,19 @@ public class StatModifier extends InstanceModifier {
      * @param coef The multiplicative constant
      * @return A new instance of StatModifier with modified value
      */
+    @NotNull
     public StatModifier multiply(double coef) {
-        return new StatModifier(getKey(), stat, value * coef, type, getSlot(), getSource());
+        return new StatModifier(getUniqueId(), getKey(), stat, value * coef, type, getSlot(), getSource());
     }
 
     @Override
     public void register(MMOPlayerData playerData) {
-        playerData.getStatMap().getInstance(stat).addModifier(this);
+        playerData.getStatMap().getInstance(stat).registerModifier(this);
     }
 
     @Override
     public void unregister(MMOPlayerData playerData) {
-        playerData.getStatMap().getInstance(stat).remove(getKey());
+        playerData.getStatMap().getInstance(stat).removeModifier(getUniqueId());
     }
 }
 

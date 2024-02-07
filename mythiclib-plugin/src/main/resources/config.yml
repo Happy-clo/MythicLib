@@ -1,35 +1,43 @@
-# 请勿修改
+# DO NOT TOUCH
 config-version: 5
 
-# 当开启时，将会在控制台输出详细的调试信息。
+# This will verbose debug messages to the console when
+# toggled on. This option applies for every MMO- plugin.
 debug: false
 
-# MMOInventory和MMOCore使用此选项在代理连接的服务器之间同步玩家数据。当玩家切换服务器时，插件会尝试每秒钟进行X次新数据的获取，默认最大尝试次数为5次。
+# This option is used by MMOInventory and MMOCore to synchronize
+# player data between proxy-connected servers. When a player changes
+# server, the plugin tries to fetch new data X times every 1s, up
+# to a maximum of 5 times by default.
 #
-# 如果你的SQL连接较弱，建议增加该值，以避免玩家数据丢失。
+# Use a higher value if your SQL connection is weak to avoid
+# player data loss.
 max-sync-tries: 5
 
-# 编辑通用插件数字格式化设置。
-# 更改后请重启服务器，以便MMOItems和MMOCore也进行更新。
+# Edit general plugin number formatting here.
+# Restart your server when changing this so that MMOItems and MMOCore update as well
 number-format:
   decimal-separator: .
 
-# 定义防御行为的计算方式。该公式应返回给定输入的最终伤害量：
-# - 造成的伤害 #damage#
-# - 当前玩家防御力 #defense#
+# Defines how defense behaves. The formula should return the
+# final amount of damage dealt, given the following inputs:
+# - damage dealt #damage#
+# - current player defense #defense#
 #
-# 默认公式来自于《放逐之路》游戏，你可以在他们的维基页面了解更多信息：https://pathofexile.fandom.com/wiki/Armour
+# The default formula is inspired from Path of Exile, you can
+# learn more about it on their wiki: https://pathofexile.fandom.com/wiki/Armour
 #
-# natural   <-> 非元素伤害
-# elemental <-> 火焰/水/.. 伤害
+# natural   <-> non-elemental damage
+# elemental <-> fire/water/.. damage
 defense-application:
   natural: '#damage# - #defense#'
   elemental: '#damage# * (1 - (#defense# / (5 * #damage# + #defense#)))'
 
-# 允许缩放健康值到特定数值，以避免额外的健康值充满屏幕。
-# 修改后需要服务器重载。
-# 如果玩家遇到看到太多心形图标的问题，请使用延迟。这种情况可能会出现在使用MySQL Inventory Bridge等插件时。
-# 延迟以游戏刻计算，20个游戏刻 = 1秒。
+# Allows to scale health up/down to a specific
+# amount so extra health does not fill up the screen.
+# Requires a SERVER reload when changed.
+# Delay should be used if your Users experience issues revolving around seeing too many hearts still. This can occur with plugins such as MySQL Inventory Bridge
+# The delay is in ticks. 20 ticks = 1 second
 health-scale:
   enabled: false
   scale: 20
@@ -37,19 +45,30 @@ health-scale:
 
 critical-strikes:
   weapon:
-    coefficient: 2 # 默认值 = 2，表示暴击造成初始伤害的200％
+    coefficient: 2 # Default = 2 meaning crits deal 200% of the initial damage
     cooldown: 3
   skill:
-    coefficient: 1.5 # 默认值 = 1.5，表示技能暴击造成初始伤害的150％
+    coefficient: 1.5 # Default = 1.5 meaning crits deal 150% of the initial damage
     cooldown: 3
 
-# 等待技能施放时发生的情况
-# 如果技能延迟（技能参数）设置为0，则不适用。
-casting-delay:
-  slowness: 60 # 施放时的速度减缓百分比
-  cancel-on-move: false # 如果玩家移动是否取消施放
+# When enabled, SHIFT_<RIGHT_CLICK/DROP_ITEM/...> trigger types are disabled
+# and the corresponding base triggers will trigger even when crouching.
+#
+# When using this option, the SHIFT_<...> triggers still exist but will NOT
+# trigger any skill, so just ignore them.
+ignore_shift_triggers: false
 
-  cast-script: # 倒计时开始时调用的MythicLib脚本
+# When enabled, abilities provided by the item in the offhand will
+# not be triggered. Set to false by default.
+ignore_offhand_click_triggers: false
+
+# What happens when the player is waiting for his skill to cast
+# Does not apply if skill delay (it is a skill parameter) is set to 0
+casting-delay:
+  slowness: 60 # A % based speed reduction when casting
+  cancel-on-move: false # If the casting should cancel if the player moves
+
+  cast-script: # MythicLib script called when the countdown begins
     enabled: true
     script:
       mechanics:
@@ -59,9 +78,9 @@ casting-delay:
           volume: 1
           pitch: 2
 
-  cancel-script: # 取消倒计时时调用的MythicLib脚本
+  cancel-script: # MythicLib script called if the countdown is cancelled
     enabled: true
-    # 其他格式:
+    # Other format:
     # script: <public_script_name>
     script:
       mechanics:
@@ -71,22 +90,24 @@ casting-delay:
           volume: 1
           pitch: 2
 
-  bossbar: # 施放延迟期间显示的bossbar
+  bossbar: # Displayed during casting delay
     enabled: true
-    format: '施放中'
+    format: 'CASTING'
 
-# 防具属性的默认和最大值。这些系统都有冷却时间，可以通过“***冷却时间缩减”属性减少冷却时间。
+# Default and max. values of armor/mitigation stats. These
+# stats all have a cooldown which can be reduced using the
+# '*** Cooldown Reduction' item stat.
 mitigation:
 
-  # 编辑减轻伤害的消息。留空以不显示消息。
+  # Edit mitigation messages here. Leave to blank for no message.
   message:
 
-    # 是否将消息显示在动作条而非聊天窗口
+    # Whether or not they should display on action bar instead of chat
     action-bar: true
 
-    parry: '&c你刚刚招架了 #damage# 伤害。'
-    block: '&c你刚刚格挡了 #damage# 伤害。' # 使用 #power# 显示格挡强度。
-    dodge: '&c你刚刚躲避了 #damage# 伤害。'
+    parry: '&cYou just parried #damage# damage.'
+    block: '&cYou just blocked #damage# damage.' # Use #power# to display block power.
+    dodge: '&cYou just dodged #damage# damage.'
 
   block:
     cooldown: 5.0
@@ -99,24 +120,25 @@ mitigation:
     knockback: 1.0
     cooldown: 8.0
 
-# 更改特定伤害来源的伤害量。当需要平衡你的基础伤害来源时，这个工具很有用。
-# 你可以使用任何数学公式来处理任何可能的伤害来源。
-# 可用的伤害来源：https://hub.spigotmc.org/javadocs/spigot/org/bukkit/event/entity/EntityDamageEvent.DamageCause.html
-# 修改后需要服务器重载。
+# Change the amount of damage dealt on specific damage sources. This
+# tool comes handy when needing to balance your vanilla damage sources.
+# You can use any math formula for any damage source possible.
+# Available damage sources: https://hub.spigotmc.org/javadocs/spigot/org/bukkit/event/entity/EntityDamageEvent.DamageCause.html
+# Requires a SERVER reload when changed.
 #
-# 使用 {event_damage} 将返回初始事件伤害。
+# Using {event_damage} will return the initial event damage.
 vanilla-damage-modifiers:
   enabled: false
   source:
-    VOID: '%mythiclib_stat_max_health% * .05' # 造成玩家最大生命值的5%伤害
-    FIRE: '{event_damage} * 2' # 火焰伤害翻倍
+    VOID: '%mythiclib_stat_max_health% * .05' # Deals 5% of player's max health
+    FIRE: '{event_damage} * 2' # Multiplies by 2 fire damage
     WITHER: '%mythiclib_stat_max_health% * .05'
     LAVA: '%mythiclib_stat_max_health% * .2'
     DROWNING: '%mythiclib_stat_max_health% * .1'
 
-# 显示游戏内的伤害或治疗指示器。
-# 修改后需要服务器重载。
-# 支持的插件:
+# Displays in-game damage or heal indicators.
+# Requires a SERVER reload when changed.
+# Supported Plugins:
 # - HolographicDisplays
 # - DecentHolograms
 # - CMI
@@ -124,9 +146,9 @@ vanilla-damage-modifiers:
 # - TrHologram
 game-indicators:
 
-  # 当实体受到伤害时
-  # 使用格式: 'ᜌ{icon} &f{value}ᜌ' 配合维基中提供的资源包
-  # 来去除灰色背景
+  # When an entity is being damaged
+  # Use format: 'ᜌ{icon} &f{value}ᜌ' along with the resource pack
+  # provided in the wiki in order to remove the gray background
   damage:
     enabled: true
     decimal-format: '0.#'
@@ -173,7 +195,7 @@ game-indicators:
     entity-height-percent: 0.75
     y-offset: 0.1
 
-  # 当实体恢复一些生命值时
+  # When an entity regens some health
   regen:
     enabled: false
     decimal-format: '0.#'
@@ -183,59 +205,88 @@ game-indicators:
     initial-upward-velocity: 1
     entity-height-percent: 0.75
     y-offset: 0.1
+    custom-font:
+      enabled: false
+      '0': 'ᜀ'
+      '1': 'ᜁ'
+      '2': 'ᜂ'
+      '3': 'ᜃ'
+      '4': 'ᜄ'
+      '5': 'ᜅ'
+      '6': 'ᜆ'
+      '7': 'ᜇ'
+      '8': 'ᜈ'
+      '9': 'ᜉ'
+      'dot': 'ᜊ'
+      'inter': 'ᜍ'
 
-# 由于1.1.6版本中与移动速度属性相关的更改，当玩家登录时，他们会看到其移动速度重置为0.1
+# Due to a change made in 1.1.6 related to the movement speed
+# attribute, players see their movement speed reset to .1 when logging in
 #
-# 如果与其他插件的兼容性问题，请将其设置为false。
+# Set to false when having issues with another plugin interfering
+# with the player's movement speed
 fix-movement-speed: true
 
-# 限制每个刻发送到玩家的伤害粒子数量。
-# 默认设置为每刻发送10个粒子。这些粒子可能会非常烦人，如果粒子过多甚至会导致客户端崩溃。
+# Limits the amount of damage particles that can be sent to a player
+# every tick. By default it's set to 10 particles/tick. These particles
+# can be quite annoying and can even crash the client if there are too many.
 damage-particles-cap:
   max-per-tick: 10
   enabled: false
 
-# 启用此选项后，插件将尝试修复发送给客户端的过大数据包。当配方太多导致客户端无法处理时，可能会发生这种情况。
-# 如果更改此选项的值，则必须重启服务器。
+# By enabling this option, the plugin will attempt to fix
+# too large packets sent to the client. This can happen
+# when the recipes are too large and the client cannot
+# handle them.
+# If you change this option value, you must restart your server.
 fix-too-large-packets: false
 
-# 是否允许进行攻击/支援行为的玩家与另一个玩家进行互动。包括技能、MI员工攻击等。
+# Whether or not a player performing an offensive/support action
+# can interact with another player. This accounts for skills,
+# MI staff attacks and a few other things.
 #
-# 更多信息请参考维基页面
+# More info available on the wiki
 # https://gitlab.com/phoenix-dvpmt/mmocore/-/wikis/Combat
 interaction_rules:
 
-  # 当启用时，为技能、近战和投射物攻击应用PvP交互规则。
-  # 默认情况下，此选项关闭，以减少新用户的混淆。
+  # When enabled, apply PvP interaction rules for skills, melee and projectile hits.
+  # This option is toggled off by default to reduce confusion for new users.
   enabled: true
 
-  # 当禁用时，支援型技能（增益或治疗）只能对玩家使用。
+  # When disabled, support-based skills (buffs or heals)
+  # may only be applied onto players.
   support_skills_on_mobs: true
 
-  # 当PvP关闭时
+  # When PvP is turned off
   pvp_off:
 
-    # 在PvP关闭时是否允许治疗其他玩家
+    offense:
+      self: false # Self-friendly fire when PvP is off
+
+    # Ability to heal self/other players when PvP is off
     support:
       party_member: true
       party_other: true
       guild_ally: true
       guild_neutral: true
       guild_enemy: true
+      self: true # Ability to self-cast buffs
 
-  ## 当PvP打开时
+  ## When PvP is turned on
   pvp_on:
 
-    # 在PvP打开时是否允许治疗其他玩家
+    # Ability to heal self/other players when PvP is on
     support:
       party_member: true
       party_other: false
       guild_ally: true
       guild_neutral: true
       guild_enemy: false
+      self: true
 
-    # 公会/队伍的友方伤害
+    # Friendly fire for guilds/parties
     offense:
       party_member: false
       guild_ally: false
       guild_neutral: true
+      self: false  # Self-friendly fire when PvP is on

@@ -11,9 +11,8 @@ import io.lumine.mythic.lib.api.player.MMOPlayerData;
 import io.lumine.mythic.lib.command.ExploreAttributesCommand;
 import io.lumine.mythic.lib.command.HealthScaleCommand;
 import io.lumine.mythic.lib.command.MMOTempStatCommand;
-import io.lumine.mythic.lib.command.mythiclib.MythicLibCommand;
-import io.lumine.mythic.lib.comp.McMMOAttackHandler;
-import io.lumine.mythic.lib.comp.SkillAPIAttackHandler;
+import io.lumine.mythic.lib.comp.McMMOModule;
+import io.lumine.mythic.lib.comp.SkillAPIModule;
 import io.lumine.mythic.lib.comp.adventure.AdventureParser;
 import io.lumine.mythic.lib.comp.anticheat.AntiCheatSupport;
 import io.lumine.mythic.lib.comp.anticheat.SpartanPlugin;
@@ -27,7 +26,8 @@ import io.lumine.mythic.lib.comp.formula.FormulaParser;
 import io.lumine.mythic.lib.comp.mythicmobs.MythicMobsAttackHandler;
 import io.lumine.mythic.lib.comp.mythicmobs.MythicMobsHook;
 import io.lumine.mythic.lib.comp.placeholder.*;
-import io.lumine.mythic.lib.comp.profile.ProfilePluginListener;
+import io.lumine.mythic.lib.comp.profile.LegacyProfiles;
+import io.lumine.mythic.lib.comp.profile.ProfileMode;
 import io.lumine.mythic.lib.comp.protocollib.DamageParticleCap;
 import io.lumine.mythic.lib.glow.GlowModule;
 import io.lumine.mythic.lib.glow.provided.MythicGlowModule;
@@ -47,7 +47,6 @@ import io.lumine.mythic.lib.util.loadingorder.DependencyNode;
 import io.lumine.mythic.lib.util.network.MythicPacketSniffer;
 import io.lumine.mythic.lib.version.ServerVersion;
 import io.lumine.mythic.lib.version.SpigotPlugin;
-import lombok.Getter;
 import org.apache.commons.lang.Validate;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.Bukkit;
@@ -66,8 +65,9 @@ import java.util.logging.Level;
 public class MythicLib extends JavaPlugin {
     public static MythicLib plugin;
 
-
     private final DamageManager damageManager = new DamageManager();
+
+    private final MythicLibCommandManager commandManager = new MythicLibCommandManager();
     private final EntityManager entityManager = new EntityManager();
     private final StatManager statManager = new StatManager();
     private final JsonManager jsonManager = new JsonManager();
@@ -78,16 +78,16 @@ public class MythicLib extends JavaPlugin {
     private final FlagHandler flagHandler = new FlagHandler();
     private final IndicatorManager indicatorManager = new IndicatorManager();
     private final FormulaParser formulaParser = new FormulaParser();
+    private final FakeEventManager fakeEventManager = new FakeEventManager();
     private Gson gson;
     private AntiCheatSupport antiCheatSupport;
     private ServerVersion version;
     private AttackEffects attackEffects;
     private MitigationMechanics mitigationMechanics;
     private AdventureParser adventureParser;
-    @Getter
     private PlaceholderParser placeholderParser;
     private GlowModule glowModule;
-    private @Nullable Boolean hasProfiles;
+    private @Nullable ProfileMode profileMode;
 
     @Override
     public void onLoad() {
@@ -126,8 +126,8 @@ public class MythicLib extends JavaPlugin {
             getLogger().warning("(Your config version: '" + configVersion + "' | Expected config version: '" + defConfigVersion + "')");
         }
 
-        // Packet interceptor
-        new MythicPacketSniffer(this);
+        // Fixes left clicks
+        new MythicPacketSniffer(this, version.isBelowOrEqual(1, 20, 1) ? 3.5 : 3);
 
         // Hologram provider
         Bukkit.getServicesManager().register(HologramFactory.class, new BukkitHologramFactory(), this, ServicePriority.Low);
@@ -187,12 +187,12 @@ public class MythicLib extends JavaPlugin {
         }
 
         if (Bukkit.getPluginManager().getPlugin("mcMMO") != null) {
-            Bukkit.getPluginManager().registerEvents(new McMMOAttackHandler(), this);
+            new McMMOModule();
             getLogger().log(Level.INFO, "Hooked onto mcMMO");
         }
 
         if (Bukkit.getPluginManager().getPlugin("SkillAPI") != null) {
-            Bukkit.getPluginManager().registerEvents(new SkillAPIAttackHandler(), this);
+            new SkillAPIModule();
             getLogger().log(Level.INFO, "Hooked onto SkillAPI");
         }
 
@@ -226,13 +226,6 @@ public class MythicLib extends JavaPlugin {
 //		if (Bukkit.getPluginManager().getPlugin("ShopKeepers") != null)
 //			entityManager.registerHandler(new ShopKeepersEntityHandler());
 
-        // Profiles
-        if (hasProfiles == null) hasProfiles = false;
-        else if (hasProfiles) {
-            Bukkit.getPluginManager().registerEvents(new ProfilePluginListener(), this);
-            getLogger().log(Level.INFO, "Hooked onto ProfileAPI");
-        }
-
         // Glowing module
         if (glowModule == null) {
             glowModule = new MythicGlowModule();
@@ -241,7 +234,6 @@ public class MythicLib extends JavaPlugin {
 
         // Command executors
         getCommand("exploreattributes").setExecutor(new ExploreAttributesCommand());
-        getCommand("mythiclib").setExecutor(new MythicLibCommand());
         getCommand("mmotempstat").setExecutor(new MMOTempStatCommand());
         getCommand("healthscale").setExecutor(new HealthScaleCommand());
 
@@ -250,6 +242,9 @@ public class MythicLib extends JavaPlugin {
         Bukkit.getPluginManager().registerEvents(SuperWorkbenchMapping.SWB, this);
         getCommand("megaworkbench").setExecutor(MegaWorkbenchMapping.MWB);
         Bukkit.getPluginManager().registerEvents(MegaWorkbenchMapping.MWB, this);
+
+        // Loads commands
+        commandManager.initialize(false);
 
         // Load local skills
         skillManager.initialize(false);
@@ -303,6 +298,19 @@ public class MythicLib extends JavaPlugin {
     @Deprecated
     public JsonManager getJson() {
         return jsonManager;
+    }
+
+    public FakeEventManager getFakeEvents() {
+        return fakeEventManager;
+    }
+
+    @Deprecated
+    public MythicLibCommandManager getCommand() {
+        return getCommands();
+    }
+
+    public MythicLibCommandManager getCommands() {
+        return commandManager;
     }
 
     public DamageManager getDamage() {
@@ -359,18 +367,33 @@ public class MythicLib extends JavaPlugin {
     }
 
     /**
-     * Enables support for the Profile API. This will work for any
-     * profile plugin that implements that API, including MMOProfiles.
-     *
-     * @author Jules
+     * Enables support for legacy (spigot-based) MMOProfiles.
      */
-    public void enableProfiles() {
-        Validate.isTrue(hasProfiles == null, "Profiles have already been enabled/disabled");
-        hasProfiles = true;
+    public void useLegacyProfiles() {
+        Validate.isTrue(profileMode == null, "Profiles have already been enabled/disabled");
+        profileMode = ProfileMode.LEGACY;
+
+        Bukkit.getPluginManager().registerEvents(new LegacyProfiles(), this);
+        getLogger().log(Level.INFO, "Hooked onto spigot-based ProfileAPI");
+    }
+
+    /**
+     * Enables support for proxy-based MMOProfiles
+     */
+    public void useProxyProfiles() {
+        Validate.isTrue(profileMode == null, "Profiles have already been enabled/disabled");
+        profileMode = ProfileMode.PROXY;
+
+        getLogger().log(Level.INFO, "Hooked onto proxy-based ProfileAPI");
     }
 
     public boolean hasProfiles() {
-        return hasProfiles;
+        return profileMode != null;
+    }
+
+    @Nullable
+    public ProfileMode getProfileMode() {
+        return profileMode;
     }
 
     @Deprecated
@@ -405,5 +428,4 @@ public class MythicLib extends JavaPlugin {
     public File getJarFile() {
         return plugin.getFile();
     }
-
 }

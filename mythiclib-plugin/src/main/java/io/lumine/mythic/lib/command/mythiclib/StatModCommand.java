@@ -17,7 +17,10 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
+@Deprecated
 public class StatModCommand extends CommandTreeNode {
+
+    @Deprecated
     public StatModCommand(CommandTreeNode parent) {
         super(parent, "statmod");
 

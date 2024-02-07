@@ -16,9 +16,9 @@ import java.text.DecimalFormatSymbols;
 
 public class ConfigManager {
     public final DecimalFormatSymbols formatSymbols = new DecimalFormatSymbols();
+
     public DecimalFormat decimal, decimals;
-    public int decimalPlaces;
-    public boolean playerAbilityDamage, castingDelayCancelOnMove, enableCastingDelayBossbar, fixTooLargePackets, debugMode;
+    public boolean playerAbilityDamage, castingDelayCancelOnMove, enableCastingDelayBossbar, fixTooLargePackets, debugMode, ignoreShiftTriggers, ignoreOffhandClickTriggers;
     public String naturalDefenseFormula, elementalDefenseFormula, castingDelayBossbarFormat;
     public double castingDelaySlowness;
     public int maxSyncTries;
@@ -33,7 +33,6 @@ public class ConfigManager {
         final ConfigurationSection config = MythicLib.plugin.getConfig();
 
         // Decimal formatting
-        this.decimalPlaces = config.getInt("number-format.decimal-places", 1);
         formatSymbols.setDecimalSeparator(getFirstChar(config.getString("number-format.decimal-separator")));
         decimal = newDecimalFormat("0.#");
         decimals = newDecimalFormat("0.##");
@@ -48,6 +47,8 @@ public class ConfigManager {
         fixTooLargePackets = config.getBoolean("fix-too-large-packets");
         debugMode = config.getBoolean("debug");
         maxSyncTries = config.getInt("max-sync-tries");
+        ignoreShiftTriggers = config.getBoolean("ignore_shift_triggers");
+        ignoreOffhandClickTriggers = config.getBoolean("ignore_offhand_click_triggers");
 
         // Casting delay
         castingDelaySlowness = config.getDouble("casting-delay.slowness");
@@ -81,13 +82,6 @@ public class ConfigManager {
         return new DecimalFormat(pattern, formatSymbols);
     }
 
-    public DecimalFormat getDefaultDecimalFormat() {
-        StringBuilder pattern = new StringBuilder("0.");
-        for (int i = 0; i < decimalPlaces; i++)
-            pattern.append("#");
-        return newDecimalFormat(pattern.toString());
-    }
-    
     private char getFirstChar(String str) {
         return str == null || str.isEmpty() ? '.' : str.charAt(0);
     }

@@ -3,8 +3,8 @@ package io.lumine.mythic.lib;
 import io.lumine.mythic.lib.api.MMOLineConfig;
 import io.lumine.mythic.lib.api.condition.RegionCondition;
 import io.lumine.mythic.lib.api.condition.type.MMOCondition;
-import io.lumine.mythic.lib.api.event.DamageCheckEvent;
 import io.lumine.mythic.lib.comp.interaction.InteractionType;
+import io.lumine.mythic.lib.util.configobject.ConfigObject;
 import org.apache.commons.lang.Validate;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
@@ -12,9 +12,12 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
+import org.bukkit.event.Event;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.metadata.MetadataValue;
 import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -27,9 +30,15 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 
 public class UtilityMethods {
+
+    public static Location readLocation(@NotNull ConfigObject config) {
+        return new Location(Bukkit.getWorld(config.getString("world")), config.getDouble("x"), config.getDouble("y"), config.getDouble("z"), (float) config.getDouble("yaw"), (float) config.getDouble("pitch"));
+    }
+
     /**
      * NOT FINAL CODE.
      * THIS WILL BE MASSIVELY REWORKED VERY SOON!
@@ -46,16 +55,27 @@ public class UtilityMethods {
         return null;
     }
 
-    /**
-     * Fake events are used very commonly in MythicLib and other plugins.
-     * This is used to pre-check if a player is able to fight with/target
-     * another player in anticipation i.e before casting the damage method.
-     *
-     * @param event Some damage event
-     * @return If the event is a fake event, used for an interaction check
-     */
+    @Deprecated
+    public static void setTextureValue(@NotNull ItemMeta meta, @NotNull String textureValue) {
+        if (meta instanceof SkullMeta) setTextureValue((SkullMeta) meta, textureValue, UUID.randomUUID());
+    }
+
+    public static void setTextureValue(@NotNull SkullMeta meta, @NotNull String textureValue) {
+        setTextureValue(meta, textureValue, UUID.randomUUID());
+    }
+
+    public static void setTextureValue(@NotNull SkullMeta meta, @NotNull String textureValue, @NotNull UUID uniqueId) {
+        final Object profile = MythicLib.plugin.getVersion().getWrapper().newProfile(uniqueId, textureValue);
+        MythicLib.plugin.getVersion().getWrapper().setProfile(meta, profile);
+    }
+
+    @Deprecated
     public static boolean isFakeEvent(@NotNull EntityDamageEvent event) {
-        return event.getDamage() == 0 || event instanceof DamageCheckEvent;
+        return isFake(event);
+    }
+
+    public static boolean isFake(@NotNull Event event) {
+        return MythicLib.plugin.getFakeEvents().isFake(event);
     }
 
     @NotNull
@@ -78,14 +98,12 @@ public class UtilityMethods {
 
     public static String formatDelay(long millis) {
 
-        if (millis < 1000 * 60)
-            return "1m";
+        if (millis < 1000 * 60) return "1m";
 
         String format = "";
         for (int j = DELAY_CHARACTERS.length - 1; j >= 0; j--) {
             long divisor = DELAY_AMOUNTS[j] * 1000;
-            if (millis < divisor)
-                continue;
+            if (millis < divisor) continue;
 
             format = (millis / divisor) + DELAY_CHARACTERS[j] + " " + format;
             millis = millis % divisor;
@@ -297,6 +315,18 @@ public class UtilityMethods {
         return str.toUpperCase().replace("-", "_").replace(" ", "_");
     }
 
+    /**
+     * Wraps a task inside of a sync block to make sure the task runs
+     * in sync. Handy util when working with completable futures.
+     *
+     * @param plugin   Plugin performing the sync task
+     * @param syncTask Task to be performed sync
+     * @return Runnable wrapping another runnable in a sync block.
+     */
+    public static <T> Consumer<T> sync(@NotNull Plugin plugin, @NotNull Consumer<T> syncTask) {
+        return t -> Bukkit.getScheduler().runTask(plugin, () -> syncTask.accept(t));
+    }
+
     public static String ymlName(String str) {
         return str.toLowerCase().replace("_", "-").replace(" ", "-");
     }
@@ -394,5 +424,36 @@ public class UtilityMethods {
 
         if (MythicLib.plugin.getMMOConfig().debugMode)
             plugin.getLogger().log(Level.INFO, colorPrefix + "[Debug" + (prefix == null ? "" : ": " + prefix) + "] " + message);
+    }
+
+    private static final int[] NEGATIVE_SPACE_AMOUNTS = {1, 2, 3, 4, 5, 6, 7, 8, 16, 32, 64, 128, 256, 512, 1024};
+
+    /**
+     * Uses character convention from https://www.spigotmc.org/threads/negative-space-font-resource-pack.440952/
+     * Differs from the one given by https://github.com/AmberWat/NegativeSpaceFont
+     *
+     * @param size Target size in pixels of negative space
+     * @return String containing negative font with given size
+     */
+    @NotNull
+    public static String getFontSpace(int size) {
+        Validate.isTrue(size < 2048 && size > -2048, "Size must be between -2050 and 2050");
+        if (size == 0) return "";
+
+        // Determine base char
+        final int BASE_CHAR = size < 0 ? 0xf801 : 0xf821;
+        if (size < 0) size = -size;
+
+        final StringBuilder built = new StringBuilder();
+        for (int i = 0; i < NEGATIVE_SPACE_AMOUNTS.length; i++) {
+            final int index = NEGATIVE_SPACE_AMOUNTS.length - 1 - i;
+            final int providedSize = NEGATIVE_SPACE_AMOUNTS[index];
+            if (size >= providedSize) {
+                size -= providedSize;
+                built.append((char) (BASE_CHAR + index));
+            }
+        }
+
+        return built.toString();
     }
 }

@@ -2,10 +2,7 @@ package io.lumine.mythic.lib.data.sql;
 
 import io.lumine.mythic.lib.MythicLib;
 import io.lumine.mythic.lib.UtilityMethods;
-import io.lumine.mythic.lib.data.SynchronizedDataHandler;
 import io.lumine.mythic.lib.data.SynchronizedDataHolder;
-import io.lumine.mythic.lib.data.SynchronizedDataManager;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -20,21 +17,22 @@ import java.util.logging.Level;
  * This class is used to synchronize player data between
  * servers. This fixes the issue of player data being
  * lost when teleporting to another server.
- *
- * @deprecated Merge with {@link SQLSynchronizedDataHandler}
+ * TODO: Merge with {@link SQLSynchronizedDataHandler}
  */
-@Deprecated
 public abstract class SQLDataSynchronizer<H extends SynchronizedDataHolder> {
     private final SQLDataSource dataSource;
-    private final H data;
-    private final UUID effectiveUUID;
+    private final H playerData;
+    private final UUID effectiveId;
     private final String tableName, uuidFieldName;
     private final long start = System.currentTimeMillis();
 
     private int tries;
 
-    public SQLDataSynchronizer(String tableName, String uuidFieldName, SQLDataSource dataSource, H data) {
-        this(tableName, uuidFieldName, dataSource, data, false);
+    private static final int RETRIEVAL_PERIOD = 1000;
+
+    @Deprecated
+    public SQLDataSynchronizer(String tableName, String uuidFieldName, SQLDataSource dataSource, H playerData, boolean profilePlugin) {
+        this(tableName, uuidFieldName, dataSource, playerData);
     }
 
     /**
@@ -52,22 +50,19 @@ public abstract class SQLDataSynchronizer<H extends SynchronizedDataHolder> {
      * @param tableName     Table name for player data storage
      * @param uuidFieldName UUID field name in table
      * @param dataSource    SQL connection being used
-     * @param data          Player data being synchronized
-     * @param profilePlugin See {@link SynchronizedDataManager#SynchronizedDataManager(JavaPlugin, SynchronizedDataHandler, boolean)}
+     * @param playerData    Player data being synchronized
      */
-    public SQLDataSynchronizer(String tableName, String uuidFieldName, SQLDataSource dataSource, H data, boolean profilePlugin) {
+    public SQLDataSynchronizer(String tableName, String uuidFieldName, SQLDataSource dataSource, H playerData) {
         this.tableName = tableName;
         this.uuidFieldName = uuidFieldName;
-        this.data = data;
+        this.playerData = playerData;
         this.dataSource = dataSource;
-        this.effectiveUUID = profilePlugin ? data.getUniqueId() : data.getProfileId();
+        this.effectiveId = playerData.getEffectiveId();
     }
 
     public H getData() {
-        return data;
+        return playerData;
     }
-
-    private static final int PERIOD = 1000;
 
     /**
      * Tries to fetch data once. If the maximum amount of fetches
@@ -76,53 +71,54 @@ public abstract class SQLDataSynchronizer<H extends SynchronizedDataHolder> {
      * <p>
      * This method freezes the thread and shall be called async.
      */
-    public void synchronize() {
-
-        // Cancel if player is offline
-        if (!data.getMMOPlayerData().isOnline()) {
-            UtilityMethods.debug(dataSource.getPlugin(), "SQL", "Stopped data retrieval for '" + effectiveUUID + "' as they went offline");
-            return;
-        }
-
+    public boolean synchronize() {
         tries++;
 
         // Fields that must be closed afterwards
         @Nullable Connection connection = null;
         @Nullable PreparedStatement prepared = null;
         @Nullable ResultSet result = null;
-        boolean retry = false;
+        boolean retry = false, success = false;
 
         try {
             connection = dataSource.getConnection();
             prepared = connection.prepareStatement("SELECT * FROM `" + tableName + "` WHERE `" + uuidFieldName + "` = ?;");
-            prepared.setString(1, effectiveUUID.toString());
+            prepared.setString(1, effectiveId.toString());
 
-            UtilityMethods.debug(dataSource.getPlugin(), "SQL", "Trying to load data of " + effectiveUUID);
+            UtilityMethods.debug(dataSource.getPlugin(), "SQL", "Trying to load data of " + effectiveId);
             result = prepared.executeQuery();
+
+            // Check if player went offline
+            if (playerWentOffline()) {
+                UtilityMethods.debug(dataSource.getPlugin(), "SQL", "Stopped data retrieval as '" + effectiveId + "' went offline");
+                return false;
+            }
 
             // Load data if found
             if (result.next()) {
                 if (tries > MythicLib.plugin.getMMOConfig().maxSyncTries || result.getInt("is_saved") == 1) {
                     confirmReception(connection);
+                    success = true;
                     loadData(result);
                     if (tries > MythicLib.plugin.getMMOConfig().maxSyncTries)
                         UtilityMethods.debug(dataSource.getPlugin(), "SQL", "Maximum number of tries reached.");
-                    UtilityMethods.debug(dataSource.getPlugin(), "SQL", "Found and loaded data of '" + effectiveUUID + "'");
+                    UtilityMethods.debug(dataSource.getPlugin(), "SQL", "Found and loaded data of '" + effectiveId + "'");
                     UtilityMethods.debug(dataSource.getPlugin(), "SQL", "Time taken: " + (System.currentTimeMillis() - start) + "ms");
                 } else {
-                    UtilityMethods.debug(dataSource.getPlugin(), "SQL", "Did not load data of '" + effectiveUUID + "' as 'is_saved' is set to 0, trying again in " + PERIOD + "ms");
+                    UtilityMethods.debug(dataSource.getPlugin(), "SQL", "Did not load data of '" + effectiveId + "' as 'is_saved' is set to 0, trying again in " + RETRIEVAL_PERIOD + "ms");
                     retry = true;
                 }
             } else {
 
                 // Empty player data
                 confirmReception(connection);
+                success = true;
                 loadEmptyData();
-                UtilityMethods.debug(dataSource.getPlugin(), "SQL", "Found empty data for '" + effectiveUUID + "', loading default...");
+                UtilityMethods.debug(dataSource.getPlugin(), "SQL", "Found empty data for '" + effectiveId + "', loading default...");
             }
 
         } catch (Exception throwable) {
-            dataSource.getPlugin().getLogger().log(Level.WARNING, "Could not load player data of '" + effectiveUUID + "':");
+            dataSource.getPlugin().getLogger().log(Level.WARNING, "Could not load player data of '" + effectiveId + "':");
             throwable.printStackTrace();
         } finally {
 
@@ -132,7 +128,7 @@ public abstract class SQLDataSynchronizer<H extends SynchronizedDataHolder> {
                 if (prepared != null) prepared.close();
                 if (connection != null) connection.close();
             } catch (SQLException exception) {
-                dataSource.getPlugin().getLogger().log(Level.WARNING, "Could not load player data of '" + effectiveUUID + "':");
+                dataSource.getPlugin().getLogger().log(Level.WARNING, "Could not load player data of '" + effectiveId + "':");
                 exception.printStackTrace();
             }
         }
@@ -140,12 +136,18 @@ public abstract class SQLDataSynchronizer<H extends SynchronizedDataHolder> {
         // Synchronize after closing resources
         if (retry) {
             try {
-                Thread.sleep(PERIOD);
+                Thread.sleep(RETRIEVAL_PERIOD);
             } catch (InterruptedException exception) {
                 throw new RuntimeException(exception);
             }
-            synchronize();
+            return synchronize();
         }
+
+        return success;
+    }
+
+    private boolean playerWentOffline() {
+        return !playerData.getMMOPlayerData().isLookup() && !playerData.getMMOPlayerData().isOnline();
     }
 
     /**
@@ -155,13 +157,15 @@ public abstract class SQLDataSynchronizer<H extends SynchronizedDataHolder> {
      * @throws SQLException Any exception. When thrown, the data will not be loaded.
      */
     private void confirmReception(Connection connection) throws SQLException {
+        if (playerData.getMMOPlayerData().isLookup()) return;
+
         @Nullable PreparedStatement prepared = null;
         try {
             prepared = connection.prepareStatement("INSERT INTO " + tableName + "(`uuid`, `is_saved`) VALUES(?, 0) ON DUPLICATE KEY UPDATE `is_saved` = 0;");
-            prepared.setString(1, effectiveUUID.toString());
+            prepared.setString(1, effectiveId.toString());
             prepared.executeUpdate();
         } catch (Exception exception) {
-            dataSource.getPlugin().getLogger().log(Level.WARNING, "Could not confirm data sync of " + effectiveUUID);
+            dataSource.getPlugin().getLogger().log(Level.WARNING, "Could not confirm data sync of " + effectiveId);
             exception.printStackTrace();
         } finally {
             if (prepared != null) prepared.close();

@@ -7,7 +7,7 @@ import io.lumine.mythic.lib.api.item.ItemTag;
 import io.lumine.mythic.lib.api.item.NBTCompound;
 import io.lumine.mythic.lib.api.item.NBTItem;
 import io.lumine.mythic.lib.api.util.NBTTypeHelper;
-import io.lumine.mythic.lib.version.wrapper.VersionWrapper;
+import io.lumine.mythic.lib.version.OreDrops;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.chat.ComponentSerializer;
@@ -24,6 +24,8 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.level.block.entity.SkullBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import org.apache.commons.lang3.Validate;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
@@ -40,26 +42,57 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.FurnaceRecipe;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.profile.PlayerProfile;
 
+import java.lang.reflect.Field;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.*;
 import java.util.logging.Level;
 
 public class VersionWrapper_1_20_R1 implements VersionWrapper {
-    private final Map<Material, Material> oreDrops = new HashMap<>();
     private final Set<Material> generatorOutputs = new HashSet<>();
 
     public VersionWrapper_1_20_R1() {
-        oreDrops.put(Material.IRON_ORE, Material.IRON_INGOT);
-        oreDrops.put(Material.GOLD_ORE, Material.GOLD_INGOT);
-        oreDrops.put(Material.COPPER_ORE, Material.COPPER_INGOT);
-        oreDrops.put(Material.ANCIENT_DEBRIS, Material.NETHERITE_SCRAP);
-        oreDrops.put(Material.DEEPSLATE_IRON_ORE, Material.IRON_INGOT);
-        oreDrops.put(Material.DEEPSLATE_GOLD_ORE, Material.GOLD_INGOT);
-        oreDrops.put(Material.DEEPSLATE_COPPER_ORE, Material.COPPER_INGOT);
-
         generatorOutputs.add(Material.COBBLESTONE);
         generatorOutputs.add(Material.OBSIDIAN);
         generatorOutputs.add(Material.BASALT);
+    }
+
+    @Override
+    public PlayerProfile getProfile(SkullMeta meta) {
+        return meta.getOwnerProfile();
+    }
+
+    @Override
+    public void setProfile(SkullMeta meta, Object object) {
+        meta.setOwnerProfile(object == null ? null : (PlayerProfile) object);
+    }
+
+    @Override
+    public PlayerProfile newProfile(UUID uniqueId, String textureValue) {
+        final PlayerProfile profile = Bukkit.getServer().createPlayerProfile(uniqueId, PLAYER_PROFILE_NAME);
+        final String stringUrl = extractUrl(new String(Base64.getDecoder().decode(textureValue)));
+        final URL url;
+        try {
+            url = new URL(stringUrl);
+        } catch (MalformedURLException exception) {
+            throw new RuntimeException("Could not create new player profile: " + exception.getMessage());
+        }
+        profile.getTextures().setSkin(url);
+        return profile;
+    }
+
+    private static final String URL_PREFIX = "\"url\":\"";
+    private static final String URL_SUFFIX = "\"";
+
+    private String extractUrl(String str) {
+        int start = str.indexOf(URL_PREFIX);
+        Validate.isTrue(start >= 0, "Could not find prefix in decoded skull value");
+        start += URL_PREFIX.length();
+        final int end = str.indexOf(URL_SUFFIX, start);
+        return str.substring(start, end);
     }
 
     @Override
@@ -72,9 +105,29 @@ public class VersionWrapper_1_20_R1 implements VersionWrapper {
         return material.getEquipmentSlot() == EquipmentSlot.HEAD;
     }
 
+    private static final OreDrops
+            IRON_ORE = new OreDrops(Material.IRON_INGOT),
+            GOLD_ORE = new OreDrops(Material.GOLD_INGOT),
+            COPPER_ORE = new OreDrops(Material.COPPER_INGOT, 2, 5),
+            ANCIENT_DEBRIS = new OreDrops(Material.NETHERITE_SCRAP);
+
     @Override
-    public Map<Material, Material> getOreDrops() {
-        return oreDrops;
+    public OreDrops getOreDrops(Material material) {
+        switch (material) {
+            case IRON_ORE:
+            case DEEPSLATE_IRON_ORE:
+                return IRON_ORE;
+            case GOLD_ORE:
+            case DEEPSLATE_GOLD_ORE:
+                return GOLD_ORE;
+            case COPPER_ORE:
+            case DEEPSLATE_COPPER_ORE:
+                return COPPER_ORE;
+            case ANCIENT_DEBRIS:
+                return ANCIENT_DEBRIS;
+            default:
+                return null;
+        }
     }
 
     @Override
@@ -225,10 +278,8 @@ public class VersionWrapper_1_20_R1 implements VersionWrapper {
         public NBTItem addTag(List<ItemTag> tags) {
             tags.forEach(tag -> {
                 if (tag.getValue() instanceof Boolean) compound.putBoolean(tag.getPath(), (boolean) tag.getValue());
-                else if (tag.getValue() instanceof Double)
-                    compound.putDouble(tag.getPath(), (double) tag.getValue());
-                else if (tag.getValue() instanceof String)
-                    compound.putString(tag.getPath(), (String) tag.getValue());
+                else if (tag.getValue() instanceof Double) compound.putDouble(tag.getPath(), (double) tag.getValue());
+                else if (tag.getValue() instanceof String) compound.putString(tag.getPath(), (String) tag.getValue());
                 else if (tag.getValue() instanceof Integer) compound.putInt(tag.getPath(), (int) tag.getValue());
                 else if (tag.getValue() instanceof List<?>) {
                     ListTag tagList = new ListTag();
@@ -343,17 +394,15 @@ public class VersionWrapper_1_20_R1 implements VersionWrapper {
 
     @Override
     public String getSkullValue(Block block) {
-        SkullBlockEntity skull = (SkullBlockEntity) ((CraftWorld) block.getWorld()).getHandle()
-                .getBlockEntity(new BlockPos(block.getX(), block.getY(), block.getZ()));
+        SkullBlockEntity skull = (SkullBlockEntity) ((CraftWorld) block.getWorld()).getHandle().getBlockEntity(new BlockPos(block.getX(), block.getY(), block.getZ()));
         if (skull.getOwnerProfile() == null) return "";
         return skull.getOwnerProfile().getProperties().get("textures").iterator().next().getValue();
     }
 
     @Override
     public void setSkullValue(Block block, String value) {
-        SkullBlockEntity skull = (SkullBlockEntity) ((CraftWorld) block.getWorld()).getHandle()
-                .getBlockEntity(new BlockPos(block.getX(), block.getY(), block.getZ()));
-        GameProfile profile = new GameProfile(UUID.randomUUID(), null);
+        SkullBlockEntity skull = (SkullBlockEntity) ((CraftWorld) block.getWorld()).getHandle().getBlockEntity(new BlockPos(block.getX(), block.getY(), block.getZ()));
+        GameProfile profile = new GameProfile(UUID.randomUUID(), PLAYER_PROFILE_NAME);
         profile.getProperties().put("textures", new Property("textures", value));
         skull.setOwner(profile);
         skull.setChanged();
@@ -396,7 +445,30 @@ public class VersionWrapper_1_20_R1 implements VersionWrapper {
     @Override
     public boolean isUndead(Entity entity) {
         EntityType type = entity.getType();
-        return type == EntityType.SKELETON || type == EntityType.STRAY || type == EntityType.WITHER_SKELETON || type == EntityType.ZOMBIE || type == EntityType.DROWNED || type == EntityType.HUSK || type.name()
-                .equals("PIG_ZOMBIE") || type == EntityType.ZOMBIE_VILLAGER || type == EntityType.PHANTOM || type == EntityType.WITHER || type == EntityType.SKELETON_HORSE || type == EntityType.ZOMBIE_HORSE;
+        return type == EntityType.SKELETON || type == EntityType.STRAY || type == EntityType.WITHER_SKELETON || type == EntityType.ZOMBIE || type == EntityType.DROWNED || type == EntityType.HUSK || type.name().equals("PIG_ZOMBIE") || type == EntityType.ZOMBIE_VILLAGER || type == EntityType.PHANTOM || type == EntityType.WITHER || type == EntityType.SKELETON_HORSE || type == EntityType.ZOMBIE_HORSE;
+    }
+
+    @Override
+    public void setUUID(Player player, UUID uniqueId) {
+        if (player.getUniqueId().equals(uniqueId)) return;
+
+        // Update UUID inside of game profile
+        final ServerPlayer handle = ((CraftPlayer) player).getHandle();
+        final GameProfile gameProfile = handle.getGameProfile();
+        try {
+            final Field _id = gameProfile.getClass().getDeclaredField("id");
+            _id.setAccessible(true);
+            _id.set(gameProfile, uniqueId);
+            _id.setAccessible(false);
+        } catch (Exception exception) {
+            throw new RuntimeException("Could not update player UUID", exception);
+        }
+
+        handle.setUUID(uniqueId);
+    }
+
+    @Override
+    public GameProfile getGameProfile(Player player) {
+        return ((CraftPlayer) player).getProfile();
     }
 }

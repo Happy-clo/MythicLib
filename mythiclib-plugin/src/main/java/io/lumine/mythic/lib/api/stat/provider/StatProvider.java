@@ -4,6 +4,7 @@ import io.lumine.mythic.lib.UtilityMethods;
 import io.lumine.mythic.lib.api.player.EquipmentSlot;
 import io.lumine.mythic.lib.api.player.MMOPlayerData;
 import io.lumine.mythic.lib.api.stat.StatMap;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -15,15 +16,16 @@ import org.jetbrains.annotations.NotNull;
  * the stat map).
  * <p>
  * See {@link EntityStatProvider} for more info
- * <p>
- * TODO Transform this into EntityMetadata and merge it with PlayerMetadata
- * TODO Good for GUI script centralization
  *
  * @author indyuce
+ *
+ * @deprecated Transform this into EntityMetadata and merge it with PlayerMetadata. Good for GUI script centralization
  */
 @Deprecated
 public interface StatProvider {
     double getStat(String stat);
+
+    LivingEntity getEntity();
 
     @Deprecated
     static StatProvider get(LivingEntity living) {

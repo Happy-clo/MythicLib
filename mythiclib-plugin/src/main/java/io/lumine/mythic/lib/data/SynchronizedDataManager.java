@@ -1,12 +1,16 @@
 package io.lumine.mythic.lib.data;
 
-import fr.phoenixdevt.profile.ProfileDataModule;
+import fr.phoenixdevt.profiles.ProfileDataModule;
+import fr.phoenixdevt.profiles.ProfileProvider;
+import fr.phoenixdevt.profiles.placeholder.PlaceholderProcessor;
 import io.lumine.mythic.lib.MythicLib;
 import io.lumine.mythic.lib.UtilityMethods;
 import io.lumine.mythic.lib.api.event.SynchronizedDataLoadEvent;
 import io.lumine.mythic.lib.api.player.MMOPlayerData;
-import io.lumine.mythic.lib.comp.profile.ProfilePluginHook;
+import io.lumine.mythic.lib.comp.profile.LegacyProfiles;
+import io.lumine.mythic.lib.comp.profile.ProfileMode;
 import io.lumine.mythic.lib.util.Closeable;
+import org.apache.commons.lang.Validate;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
@@ -34,15 +38,10 @@ import java.util.concurrent.CompletableFuture;
  *            are offline
  * @author jules
  */
-public abstract class SynchronizedDataManager<H extends SynchronizedDataHolder, O extends OfflineDataHolder> {
+public abstract class SynchronizedDataManager<H extends SynchronizedDataHolder, O extends OfflineDataHolder> implements Closeable {
     private final JavaPlugin owning;
     private final Map<UUID, H> activeData = Collections.synchronizedMap(new HashMap<>());
 
-    /**
-     * Profile plugins behave differently on data storage:
-     * - they use the player UUID directly instead of using profile IDs
-     * - this option has to be passed to all of the data handlers
-     */
     private final boolean profilePlugin;
 
     @NotNull
@@ -64,6 +63,7 @@ public abstract class SynchronizedDataManager<H extends SynchronizedDataHolder, 
         dataHandler.setup();
     }
 
+    @NotNull
     public SynchronizedDataHandler<H, O> getDataHandler() {
         return dataHandler;
     }
@@ -133,8 +133,7 @@ public abstract class SynchronizedDataManager<H extends SynchronizedDataHolder, 
 
         // Execute pending async tasks (supports /restart and /stop)
         if (!autosave) for (BukkitTask pending : Bukkit.getScheduler().getPendingTasks())
-            if (pending.getOwner().equals(owning))
-                ((Runnable) pending).run();
+            if (pending.getOwner().equals(owning)) ((Runnable) pending).run();
     }
 
     private static final Listener FICTIVE_LISTENER = new Listener() {
@@ -161,16 +160,27 @@ public abstract class SynchronizedDataManager<H extends SynchronizedDataHolder, 
         // Auto-save
         if (owning.getConfig().getBoolean("auto-save.enabled")) new AutoSaveRunnable(this);
 
-        // Load data on login
+        // Setup data on login
         Bukkit.getPluginManager().registerEvent(PlayerJoinEvent.class, FICTIVE_LISTENER, joinEventPriority, (listener, event) -> setup(((PlayerJoinEvent) event).getPlayer()), owning);
 
-        // Profile events if profile module is installed
-        if (!profilePlugin && MythicLib.plugin.hasProfiles())
-            new ProfilePluginHook(this, FICTIVE_LISTENER, joinEventPriority, quitEventPriority);
+        // Save data on logout
+        if (profilePlugin || MythicLib.plugin.getProfileMode() != ProfileMode.LEGACY)
+            Bukkit.getPluginManager().registerEvent(PlayerQuitEvent.class, FICTIVE_LISTENER, quitEventPriority, (listener, event) -> unregister(((PlayerQuitEvent) event).getPlayer()), owning);
 
-            // Save data on logout
-        else
-            Bukkit.getPluginManager().registerEvent(PlayerQuitEvent.class, FICTIVE_LISTENER, quitEventPriority, (listener, event) -> unregisterSafely(get(((PlayerQuitEvent) event).getPlayer())), owning);
+        if (profilePlugin) return;
+
+        // Support for legacy profiles
+        if (MythicLib.plugin.getProfileMode() == ProfileMode.LEGACY)
+            LegacyProfiles.hook(this, FICTIVE_LISTENER, joinEventPriority, quitEventPriority);
+            // Support for proxy based profiles
+        else if (MythicLib.plugin.getProfileMode() == ProfileMode.PROXY) hookOnProxyProfiles();
+    }
+
+
+    private void hookOnProxyProfiles() {
+        final ProfileProvider profilePlugin = Bukkit.getServicesManager().getRegistration(ProfileProvider.class).getProvider();
+        final ProfileDataModule module = (ProfileDataModule) newProfileDataModule();
+        if (module instanceof PlaceholderProcessor) profilePlugin.registerPlaceholders((PlaceholderProcessor) module);
     }
 
     /**
@@ -180,6 +190,16 @@ public abstract class SynchronizedDataManager<H extends SynchronizedDataHolder, 
         // Nothing by default
     }
 
+    @Override
+    public void close() {
+        saveAll(false);
+        dataHandler.close();
+    }
+
+    /**
+     * @param playerData Player data to be loaded.
+     * @return Async completable future that completes when the data is loaded.
+     */
     @NotNull
     public CompletableFuture<Void> loadData(@NotNull H playerData) {
         return CompletableFuture.runAsync(UtilityMethods.serverThreadCatch(owning, () -> dataHandler.loadData(playerData)));
@@ -198,16 +218,32 @@ public abstract class SynchronizedDataManager<H extends SynchronizedDataHolder, 
     public H setup(@NotNull Player player) {
 
         // Get data or compute it if non existent (more resilient)
-        final @Nullable H playerData = activeData.computeIfAbsent(player.getUniqueId(), uuid -> newPlayerData(MMOPlayerData.get(player.getUniqueId())));
+        final @NotNull H playerData = activeData.computeIfAbsent(player.getUniqueId(), uuid -> newPlayerData(MMOPlayerData.get(player.getUniqueId())));
 
         // Schedule data loading
-        if (!playerData.isSynchronized() && (profilePlugin || !MythicLib.plugin.hasProfiles()))
-            loadData(playerData).thenAccept(v -> Bukkit.getScheduler().runTask(owning, () -> {
-                playerData.markAsSynchronized();
-                Bukkit.getPluginManager().callEvent(new SynchronizedDataLoadEvent(this, playerData));
-            }));
+        if (requiresSynchronization(playerData)) loadData(playerData).thenAccept(UtilityMethods.sync(owning, v -> {
+            playerData.markAsSynchronized();
+            Bukkit.getPluginManager().callEvent(new SynchronizedDataLoadEvent(this, playerData));
+        }));
 
         return playerData;
+    }
+
+    private boolean requiresSynchronization(@NotNull H holder) {
+        if (holder.isSynchronized()) return false;
+        if (profilePlugin) return true;
+        if (MythicLib.plugin.getProfileMode() == null) return true;
+        if (MythicLib.plugin.getProfileMode() == ProfileMode.LEGACY) return false;
+        if (MythicLib.plugin.getProfileMode() == ProfileMode.PROXY) return holder.getMMOPlayerData().hasProfile();
+        throw new RuntimeException();
+    }
+
+    /**
+     * @deprecated Use {@link #unregister(Player)} instead
+     */
+    @Deprecated
+    public void unregisterSafely(H playerData) {
+        unregister(playerData.getPlayer());
     }
 
     /**
@@ -215,18 +251,19 @@ public abstract class SynchronizedDataManager<H extends SynchronizedDataHolder, 
      * This saves the player data either through SQL or YAML,
      * then closes the player data and clears it from the data map.
      *
-     * @param playerData PLayer data to unregister
+     * @param player Player whose data needs to be unregistered
+     * @return Completable future of the data being saved
      */
-    public void unregisterSafely(H playerData) {
+    @NotNull
+    public CompletableFuture<Void> unregister(@NotNull Player player) {
+        final H playerData = activeData.remove(player.getUniqueId());
+        Validate.notNull(playerData, "Could not find player data of player '" + player.getUniqueId() + "'");
 
         // Close and unregister data instantly if no error occurred
         if (playerData instanceof Closeable) ((Closeable) playerData).close();
 
         // Save data async if required
-        if (playerData.isSynchronized())
-            Bukkit.getScheduler().runTaskAsynchronously(owning, UtilityMethods.serverThreadCatch(owning, () -> dataHandler.saveData(playerData, false)));
-
-        activeData.remove(playerData.getUniqueId());
+        return playerData.isSynchronized() ? CompletableFuture.runAsync(UtilityMethods.serverThreadCatch(owning, () -> dataHandler.saveData(playerData, false))) : CompletableFuture.completedFuture(null);
     }
 
     /**
@@ -236,7 +273,7 @@ public abstract class SynchronizedDataManager<H extends SynchronizedDataHolder, 
     public abstract H newPlayerData(@NotNull MMOPlayerData playerData);
 
     /**
-     * @return An object of type {@link ProfileDataModule} which is an object
+     * @return An object of type {@link fr.phoenixdevt.profiles.ProfileDataModule} which is an object
      *         that cannot be referenced inside of that class to avoid import issues.
      */
     public abstract Object newProfileDataModule();

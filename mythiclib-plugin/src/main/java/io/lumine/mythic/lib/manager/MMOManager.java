@@ -11,3 +11,5 @@ public interface MMOManager {
      */
     void initialize(boolean clearBefore);
 }
+
+

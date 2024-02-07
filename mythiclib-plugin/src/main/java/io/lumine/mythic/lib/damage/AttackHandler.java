@@ -22,6 +22,7 @@ public interface AttackHandler {
      * @param entity The entity being damaged by a specific plugin
      * @return Information about the attack (the potential player damage source,
      *         damage types, and attack damage value).
+     * @deprecated To be removed
      */
     @Nullable
     @Deprecated
@@ -32,9 +33,21 @@ public interface AttackHandler {
     /**
      * @param entity The entity being damaged
      * @return If the entity is being damaged by a specific plugin
+     * @deprecated To be removed
      */
     @Deprecated
     default boolean isAttacked(Entity entity) {
         throw new RuntimeException("Unsupported operation");
+    }
+
+    /**
+     * @param event Some event
+     * @return Is the event fake
+     * @see {@link io.lumine.mythic.lib.api.event.fake.FakeEventCaller}
+     * @deprecated To be removed
+     */
+    @Deprecated
+    default boolean isFake(EntityDamageEvent event) {
+        return false;
     }
 }

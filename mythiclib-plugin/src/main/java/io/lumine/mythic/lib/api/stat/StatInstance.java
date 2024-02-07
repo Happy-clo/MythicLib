@@ -10,7 +10,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Iterator;
-import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
@@ -91,19 +91,17 @@ public class StatInstance extends ModifiedInstance<StatModifier> {
      *         modifiers.
      */
     public double getFilteredTotal(Predicate<StatModifier> filter, Function<StatModifier, StatModifier> modification) {
-        final @NotNull StatHandler handler = findHandler();
+        final @Nullable StatHandler handler = findHandler();
         final double base = handler == null ? 0 : handler.getBaseValue(this);
         final double total = getFilteredTotal(base, filter, modification);
         return handler == null ? total : handler.clampValue(total);
     }
 
-    /**
-     * @param key The string key of the external modifier source or plugin
-     * @return Attribute with the given key, or <code>null</code> if not found
-     */
-    @Nullable
-    public StatModifier getModifier(String key) {
-        return modifiers.get(key);
+    @Override
+    @Deprecated
+    public void addModifier(@NotNull StatModifier modifier) {
+        removeIf(modifier.getKey()::equals);
+        registerModifier(modifier);
     }
 
     /**
@@ -112,8 +110,8 @@ public class StatInstance extends ModifiedInstance<StatModifier> {
      * @param modifier The stat modifier being registered
      */
     @Override
-    public void addModifier(StatModifier modifier) {
-        final ModifierPacket packet = new ModifierPacket(this);
+    public void registerModifier(@NotNull StatModifier modifier) {
+        final ModifierPacket packet = new ModifierPacket();
         packet.addModifier(modifier);
         packet.runUpdate();
     }
@@ -126,8 +124,8 @@ public class StatInstance extends ModifiedInstance<StatModifier> {
      *                  unregistered or not
      */
     @Override
-    public void removeIf(Predicate<String> condition) {
-        final ModifierPacket packet = new ModifierPacket(this);
+    public void removeIf(@NotNull Predicate<String> condition) {
+        final ModifierPacket packet = new ModifierPacket();
         packet.removeIf(condition);
         packet.runUpdate();
     }
@@ -138,14 +136,24 @@ public class StatInstance extends ModifiedInstance<StatModifier> {
      * @param key The string key of the external stat modifier source or plugin
      */
     @Override
+    @Deprecated
     public void remove(String key) {
-        final ModifierPacket packet = new ModifierPacket(this);
-        packet.remove(key);
+        removeIf(key::equals);
+    }
+
+    /**
+     * Removes the modifier associated to the given unique ID.
+     */
+    @Override
+    public void removeModifier(@NotNull UUID uniqueId) {
+        final ModifierPacket packet = new ModifierPacket();
+        packet.remove(uniqueId);
         packet.runUpdate();
     }
 
+    @NotNull
     public ModifierPacket newPacket() {
-        return new ModifierPacket(this);
+        return new ModifierPacket();
     }
 
     /**
@@ -159,17 +167,12 @@ public class StatInstance extends ModifiedInstance<StatModifier> {
      * @author indyuce
      */
     public class ModifierPacket {
-        private final StatInstance instance;
 
         /**
          * Set to true if some update is required. This is a small
          * performance improvement as it reduces useless stat updates.
          */
         private boolean updateRequired;
-
-        public ModifierPacket(StatInstance instance) {
-            this.instance = instance;
-        }
 
         /**
          * Registers a stat modifier and run the required player stat updates.
@@ -179,20 +182,20 @@ public class StatInstance extends ModifiedInstance<StatModifier> {
          * @param modifier The stat modifier being registered
          */
         public void addModifier(StatModifier modifier) {
-            final StatModifier current = modifiers.put(modifier.getKey(), modifier);
+            final StatModifier current = modifiers.put(modifier.getUniqueId(), modifier);
             if (current != null && current instanceof Closeable) ((Closeable) current).close();
             updateRequired = true;
         }
 
         /**
-         * Removes a stat modifier with a specific key
+         * Removes a stat modifier with a specific UUID
          *
-         * @param key The string key of the external stat modifier source or plugin
+         * @param uniqueId The UUID of the modifier you'd like to remove
          */
-        public void remove(String key) {
+        public void remove(@NotNull UUID uniqueId) {
 
             // Find and remove current value
-            final StatModifier mod = modifiers.remove(key);
+            final StatModifier mod = modifiers.remove(uniqueId);
             if (mod == null) return;
 
             /*
@@ -206,19 +209,26 @@ public class StatInstance extends ModifiedInstance<StatModifier> {
         }
 
         /**
+         * Removes a stat modifier with a specific key
+         *
+         * @param key The string key of the external stat modifier source or plugin
+         */
+        @Deprecated
+        public void remove(@NotNull String key) {
+            removeIf(str -> str.equals(key));
+        }
+
+        /**
          * Iterates through registered stat modifiers and unregisters them
          * if a certain condition based on their string key is met
          *
          * @param condition Condition on the modifier key, if it should be unregistered or not
          */
-        public void removeIf(Predicate<String> condition) {
-            for (Iterator<Map.Entry<String, StatModifier>> iterator = modifiers.entrySet().iterator(); iterator.hasNext(); ) {
-                final Map.Entry<String, StatModifier> entry = iterator.next();
-                if (condition.test(entry.getKey())) {
-
-                    final StatModifier modifier = entry.getValue();
+        public void removeIf(@NotNull Predicate<String> condition) {
+            for (Iterator<StatModifier> iterator = modifiers.values().iterator(); iterator.hasNext(); ) {
+                final StatModifier modifier = iterator.next();
+                if (condition.test(modifier.getKey())) {
                     if (modifier instanceof Closeable) ((Closeable) modifier).close();
-
                     iterator.remove();
                     updateRequired = true;
                 }
@@ -230,7 +240,7 @@ public class StatInstance extends ModifiedInstance<StatModifier> {
          */
         public void runUpdate() {
             final StatHandler handler;
-            if (updateRequired && (handler = findHandler()) != null) handler.runUpdate(instance);
+            if (updateRequired && (handler = findHandler()) != null) handler.runUpdate(StatInstance.this);
         }
     }
 }

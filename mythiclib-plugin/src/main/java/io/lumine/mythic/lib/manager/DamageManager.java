@@ -31,8 +31,7 @@ import java.util.*;
 import java.util.logging.Level;
 
 /**
- * Central piece of the MythicLib damage system. Since ML 1.4.3
- * attack metadatas are stored as entity metadata.
+ * Central piece of the MythicLib damage system.
  *
  * @author jules
  */
@@ -65,6 +64,11 @@ public class DamageManager implements Listener {
         Validate.notNull(handler, "Damage handler cannot be null");
 
         handlers.add(handler);
+    }
+
+    @NotNull
+    public List<AttackHandler> getHandlers() {
+        return handlers;
     }
 
     @Deprecated
@@ -313,6 +317,15 @@ public class DamageManager implements Listener {
             case FIRE_TICK:
             case MELTING:
                 return new DamageType[]{DamageType.PHYSICAL, DamageType.DOT};
+            case STARVATION:
+            case DRYOUT:
+            case FREEZE:
+                return new DamageType[]{DamageType.DOT};
+            case FIRE:
+            case LAVA:
+            case HOT_FLOOR:
+            case SONIC_BOOM:
+            case LIGHTNING:
             case FALL:
             case THORNS:
             case CONTACT:

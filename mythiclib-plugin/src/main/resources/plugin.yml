@@ -6,26 +6,22 @@ version: ${project.version}
 description: ${project.description}
 softdepend: [ WorldGuard,Residence,Factions,MythicMobs,PlaceholderAPI ]
 commands:
-  mythiclib:
-    description: MythicLib主命令。
-    permission: mythiclib.reload
-    aliases: [ml]
   healthscale:
-    description: 缩放玩家的生命值。已弃用，请使用/ml debug healthscale命令。
+    description: Scales the player's health. Deprecated, use /ml debug healthscale
     permission: mythiclib.command.healthscale
   exploreattributes:
-    description: 探索玩家属性。已弃用，请使用/ml debug attributes命令。
+    description: Explore player attributes. Deprecated, use /ml debug attributes
     permission: mythiclib.explore-attributes
   mmotempstat:
-    description: 向玩家添加临时属性修改器。已弃用，请使用/ml statmod命令。
+    description: Add temporary stat modifier to player. Deprecated, use /ml statmod
     permission: mythiclib.tempstat
   superworkbench:
-    aliases: [swb]
-    description: 打开超级5x5工作台。
+    aliases: [ swb ]
+    description: Open the super 5x5 workbench
     permission: mythiclib.superworkbench
   megaworkbench:
-    aliases: [mwb]
-    description: 打开巨型6x6工作台。
+    aliases: [ mwb ]
+    description: Open the mega 6x6 workbench
     permission: mythiclib.megaworkbench
 permissions:
   mythiclib.admin:

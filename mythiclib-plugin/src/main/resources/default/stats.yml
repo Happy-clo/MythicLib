@@ -1,7 +1,9 @@
-# 不同属性在GUI（例如玩家属性）中显示的小数位数。
+
+# How much decimal places the different stats
+# display in the GUIs (e.g in player stats).
 # https://docs.oracle.com/javase/7/docs/api/java/text/DecimalFormat.html
 #
-# 当未指定时，默认为"0.#"，无法编辑。
+# Default is "0.#" when none is specified, this cannot be edited.
 decimal-format:
   MOVEMENT_SPEED: '0.##'
   ARMOR_TOUGHNESS: '0.###'
@@ -9,29 +11,34 @@ decimal-format:
   HEALTH_REGENERATION: '0.##'
   MANA_REGENERATION: '0.##'
   STELLIUM_REGENERATION: '0.##'
-  # 添加更多...
+  # Add as many as you want.
 
-# 统计值的最小和最大值。这意味着对于CRITICAL_STRIKE_CHANCE使用'0 = 100'，
-# 意味着你不能少于0%的暴击几率，也不能多于100%的暴击几率。这是服务器平衡的一个重要工具。
-# 你可以平衡阻挡率、防御、最大生命值、伤害减免等统计值。
+# Minimum and maximum values for the stat values. This means using '0 = 100'
+# for CRITICAL_STRIKE_CHANCE means that you cannot have less than 0% and
+# cannot have more than 100% critical strike chance. This is an important
+# tool for server balance. You can balance stats like block rating, defense,
+# max health, damage reduction etc.
 #
-# * 通用格式是'{最小值} = {最大值}'
-# * 使用'= {最大值}'将禁用下限。
-# * 使用'{最小值} ='将禁用上限。
-# * 默认情况下，大多数统计值没有上限或下限。以下一些仅为示例。
-# * !! 最小值不是基本统计值。它只是意味着你的统计值不能低于X（它只是将你的统计值固定在一定范围内）。
+# * General format is '{MINIMUM VALUE} = {MAXIMUM VALUE}'
+# * Using '= {MAXIMUM VALUE}' will disable the lower bound.
+# * Using '{MINIMUM VALUE} =' will disable the upper bound.
+# * By default there are no upper or lower bounds for most stats. Some of
+#   the following are just examples.
+# * !! The minimum value IS NOT A BASE STAT VALUE. It just means that you
+#   cannot have less than X in that stat (it just clamps your stat value).
 #
-# 默认的Minecraft统计值，例如生命值、护甲、攻击伤害等，
-# 部分受到支持。只有由MMO插件提供的这些属性的一部分将受到这些上限/下限的影响。
+# Default Minecraft stats like Health, Armor, Attack damage, etc.
+# are PARTIALLY supported. Only the portion of these attributes
+# granted by MMO plugins will be affected by these lower/upper bounds.
 min-max-values:
 
-  # 暴击
+  # Crits
   CRITICAL_STRIKE_CHANCE: '0 = 80'
   CRITICAL_STRIKE_POWER: '0 = 500'
   SKILL_CRITICAL_STRIKE_CHANCE: '0 = 80'
   SKILL_CRITICAL_STRIKE_POWER: '0 = 500'
 
-  # 伤害减免
+  # Mitigation
   BLOCK_RATING: '0 = 80'
   DODGE_RATING: '0 = 80'
   PARRY_RATING: '0 = 80'
@@ -41,29 +48,32 @@ min-max-values:
   DODGE_COOLDOWN_REDUCTION: '0 = 80'
   PARRY_COOLDOWN_REDUCTION: '0 = 80'
 
-  # 其他
+  # Other
   MOVEMENT_SPEED: '0 = .3'
   DEFENSE: '0 = 10000'
   SPEED_MALUS_REDUCTION: '0=80'
 
-  # 添加更多...
+  # Add as many as you want.
 
-# 这是你可以编辑任何统计值的基础值。这与永久统计值增益的效果完全相同。
-# 如果MMOCore类给了你20点基础生命值，而这个配置节中的基础值设置为10，
-# 那么最终你将得到20 + 10 = 30点生命值。它在MMOItems物品中也是同样的效果。
+# This is where you can edit the base value of any stat. This has the
+# exact same effect as a PERMANENT stat buff. If a MMOCore class gives
+# you 20 base HP, and if the base value in this config section is set
+# to 10, it will result in 20 + 10 = 30 HP. It also works like that
+# with MMOItems items as well.
 #
-# 这也是平衡玩家属性的重要工具。
+# This is also an important tool for balancing your player stats.
 #
-# !! 如果这个值低于你的最小统计值，它很可能没有用，因为你的统计值不会得到增益。
+# !! If this value is lower than your minimum stat value, it is most
+# likely useless because your stat value will not be buffed.
 #
-# 任何统计值的默认基础统计值是0，无法编辑。
+# The default base stat for any stat is 0, this cannot be edited.
 base-stat-value:
 
-  # 暴击。默认情况下，暴击造成2倍伤害。
+  # Crits. By default, crits deal 2x damage
   CRITICAL_STRIKE_POWER: 200
   SKILL_CRITICAL_STRIKE_POWER: 200
 
-  # 伤害减免
+  # Mitigation
   BLOCK_POWER: 25
 
-  # 添加更多...
+  # Add as many as you want.

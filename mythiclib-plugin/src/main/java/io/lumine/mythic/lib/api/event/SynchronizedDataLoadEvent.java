@@ -36,9 +36,13 @@ public class SynchronizedDataLoadEvent extends Event {
         return holder;
     }
 
-    @Nullable
+    @NotNull
     public Event getProfileEvent() {
         return Objects.requireNonNull(profileEvent, "No corresponding profile event");
+    }
+
+    public boolean hasProfileEvent() {
+        return profileEvent != null;
     }
 
     @Override

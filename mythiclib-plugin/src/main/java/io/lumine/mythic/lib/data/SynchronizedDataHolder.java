@@ -1,5 +1,6 @@
 package io.lumine.mythic.lib.data;
 
+import io.lumine.mythic.lib.MythicLib;
 import io.lumine.mythic.lib.api.player.MMOPlayerData;
 import org.apache.commons.lang.Validate;
 import org.bukkit.entity.Player;
@@ -20,6 +21,7 @@ import java.util.UUID;
  */
 public abstract class SynchronizedDataHolder implements OfflineDataHolder {
     private final MMOPlayerData playerData;
+    private final boolean profilePlugin;
 
     /**
      * This boolean dictates whether the player data was loaded
@@ -27,10 +29,20 @@ public abstract class SynchronizedDataHolder implements OfflineDataHolder {
      */
     private boolean sync;
 
-    public SynchronizedDataHolder(MMOPlayerData playerData) {
+    public SynchronizedDataHolder(@NotNull MMOPlayerData playerData) {
+        this(false, playerData);
+    }
+
+    /**
+     * @param profilePlugin If the plugin creating the player data is a profile plugin
+     * @param playerData    Parent MythicLib player data
+     */
+    public SynchronizedDataHolder(boolean profilePlugin, @NotNull MMOPlayerData playerData) {
+        this.profilePlugin = profilePlugin;
         this.playerData = playerData;
     }
 
+    @NotNull
     public MMOPlayerData getMMOPlayerData() {
         return playerData;
     }
@@ -47,8 +59,29 @@ public abstract class SynchronizedDataHolder implements OfflineDataHolder {
     }
 
     @NotNull
+    public UUID getOfficialId() {
+        return playerData.getOfficialId();
+    }
+
+    @NotNull
     public Player getPlayer() {
         return playerData.getPlayer();
+    }
+
+    /**
+     * @return The UUID used to save player data inside of the database.
+     */
+    @NotNull
+    public UUID getEffectiveId() {
+
+        // No profiles => All IDs match
+        if (MythicLib.plugin.getProfileMode() == null) return getUniqueId();
+
+        // Profile plugin => take official ID (if proxy-based profiles are enabled), unique ID otherwise (legacy profiles)
+        if (profilePlugin) return playerData.hasOfficialId() ? getOfficialId() : getUniqueId();
+
+        // Otherwise, take profile ID if it exists
+        return playerData.hasProfile() ? getProfileId() : getUniqueId();
     }
 
     @Deprecated

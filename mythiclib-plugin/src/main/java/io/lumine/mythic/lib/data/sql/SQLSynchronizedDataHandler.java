@@ -19,14 +19,13 @@ public abstract class SQLSynchronizedDataHandler<H extends SynchronizedDataHolde
     }
 
     @Override
-    public void loadData(@NotNull H playerData) {
-        newDataSynchronizer(playerData).synchronize();
+    public boolean loadData(@NotNull H playerData) {
+        return newDataSynchronizer(playerData).synchronize();
     }
 
     /**
-     * @deprecated Not generalized yet
+     * TODO: Not generalized yet
      */
-    @Deprecated
     @Override
     public abstract void saveData(@NotNull H playerData, boolean autosave);
 
@@ -35,5 +34,5 @@ public abstract class SQLSynchronizedDataHandler<H extends SynchronizedDataHolde
         getDataSource().close();
     }
 
-    public abstract SQLDataSynchronizer newDataSynchronizer(H playerData);
+    public abstract SQLDataSynchronizer newDataSynchronizer(@NotNull H playerData);
 }

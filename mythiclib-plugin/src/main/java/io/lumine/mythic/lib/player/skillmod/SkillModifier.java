@@ -9,6 +9,7 @@ import io.lumine.mythic.lib.skill.handler.SkillHandler;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 /**
  * A skill "modifier" modifies a specific parameter of a skill,
@@ -50,6 +51,13 @@ public class SkillModifier extends InstanceModifier {
         this.parameter = parameter;
     }
 
+    public SkillModifier(UUID uniqueId, String key, String parameter, List<SkillHandler<?>> skills, double value, ModifierType type, EquipmentSlot slot, ModifierSource source) {
+        super(uniqueId, key, slot, source, value, type);
+
+        this.skills = skills;
+        this.parameter = parameter;
+    }
+
     /**
      * Used to add a constant to some existing stat modifier, usually an
      * integer, for instance it is used when a skill buff trigger is triggered multiple times.
@@ -58,7 +66,7 @@ public class SkillModifier extends InstanceModifier {
      * @return A new instance of SkillBuff with modified value
      */
     public SkillModifier add(double offset) {
-        return new SkillModifier(getKey(), parameter, new ArrayList(skills), value + offset, type, getSlot(), getSource());
+        return new SkillModifier(getUniqueId(), getKey(), parameter, new ArrayList(skills), value + offset, type, getSlot(), getSource());
     }
 
     public List<SkillHandler<?>> getSkills() {
@@ -74,7 +82,7 @@ public class SkillModifier extends InstanceModifier {
      */
     @Deprecated
     public void register(MMOPlayerData playerData, SkillHandler<?> handler) {
-        playerData.getSkillModifierMap().getInstance(handler, parameter).addModifier(this);
+        playerData.getSkillModifierMap().getInstance(handler, parameter).registerModifier(this);
     }
 
     /**
@@ -82,18 +90,18 @@ public class SkillModifier extends InstanceModifier {
      */
     @Deprecated
     public void unregister(MMOPlayerData playerData, SkillHandler<?> handler) {
-        playerData.getSkillModifierMap().getInstance(handler, parameter).remove(getKey());
+        playerData.getSkillModifierMap().getInstance(handler, parameter).removeModifier(getUniqueId());
     }
 
     @Override
     public void register(MMOPlayerData playerData) {
         for (SkillHandler<?> handler : skills)
-            playerData.getSkillModifierMap().getInstance(handler, parameter).addModifier(this);
+            playerData.getSkillModifierMap().getInstance(handler, parameter).registerModifier(this);
     }
 
     @Override
     public void unregister(MMOPlayerData playerData) {
         for (SkillHandler<?> handler : skills)
-            playerData.getSkillModifierMap().getInstance(handler, parameter).remove(getKey());
+            playerData.getSkillModifierMap().getInstance(handler, parameter).removeModifier(getUniqueId());
     }
 }
